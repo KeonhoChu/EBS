@@ -24,11 +24,12 @@ import {
   Headphones,
   Download,
   Share,
+  AccountTree,
 } from '@mui/icons-material';
 
 interface StudioItem {
   id: string;
-  type: 'faq' | 'study-guide' | 'briefing' | 'timeline' | 'toc' | 'audio';
+  type: 'faq' | 'study-guide' | 'briefing' | 'timeline' | 'toc' | 'audio' | 'mindmap';
   title: string;
   description: string;
   icon: React.ReactNode;
@@ -39,9 +40,14 @@ interface StudioPanelProps {
   open: boolean;
   onToggle: () => void;
   isMobile: boolean;
+  onGenerateContent?: (type: string) => void;
+  onViewContent?: (type: string) => void;
+  onDownload?: (type: string) => void;
+  onShare?: (type: string) => void;
+  generatedContent?: Set<string>;
 }
 
-const StudioPanel: React.FC<StudioPanelProps> = ({ open, onToggle, isMobile }) => {
+const StudioPanel: React.FC<StudioPanelProps> = ({ open, onToggle, isMobile, onGenerateContent, onViewContent, onDownload, onShare, generatedContent }) => {
   const [studioItems] = useState<StudioItem[]>([
     {
       id: '1',
@@ -49,7 +55,6 @@ const StudioPanel: React.FC<StudioPanelProps> = ({ open, onToggle, isMobile }) =
       title: 'FAQ',
       description: 'Common questions and answers from your sources',
       icon: <Quiz />,
-      status: 'generated',
     },
     {
       id: '2',
@@ -57,7 +62,6 @@ const StudioPanel: React.FC<StudioPanelProps> = ({ open, onToggle, isMobile }) =
       title: 'Study Guide',
       description: 'Key concepts and highlights',
       icon: <MenuBook />,
-      status: 'not-generated',
     },
     {
       id: '3',
@@ -65,7 +69,6 @@ const StudioPanel: React.FC<StudioPanelProps> = ({ open, onToggle, isMobile }) =
       title: 'Briefing Doc',
       description: 'Concise summary of main points',
       icon: <Description />,
-      status: 'not-generated',
     },
     {
       id: '4',
@@ -73,7 +76,6 @@ const StudioPanel: React.FC<StudioPanelProps> = ({ open, onToggle, isMobile }) =
       title: 'Timeline',
       description: 'Chronological view of events',
       icon: <Timeline />,
-      status: 'not-generated',
     },
     {
       id: '5',
@@ -81,15 +83,20 @@ const StudioPanel: React.FC<StudioPanelProps> = ({ open, onToggle, isMobile }) =
       title: 'Table of Contents',
       description: 'Structured outline of content',
       icon: <FormatListBulleted />,
-      status: 'not-generated',
     },
     {
       id: '6',
+      type: 'mindmap',
+      title: 'Mind Map',
+      description: 'Visual keyword map of your sources',
+      icon: <AccountTree />,
+    },
+    {
+      id: '7',
       type: 'audio',
       title: 'Audio Overview',
       description: 'AI-generated podcast discussion',
       icon: <Headphones />,
-      status: 'not-generated',
     },
   ]);
 
@@ -186,7 +193,7 @@ const StudioPanel: React.FC<StudioPanelProps> = ({ open, onToggle, isMobile }) =
                         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                           {item.title}
                         </Typography>
-                        {item.status === 'generated' && (
+                        {generatedContent?.has(item.type) && (
                           <Chip label="Ready" size="small" color="success" sx={{ ml: 'auto' }} />
                         )}
                       </Box>
@@ -195,15 +202,26 @@ const StudioPanel: React.FC<StudioPanelProps> = ({ open, onToggle, isMobile }) =
                       </Typography>
                     </CardContent>
                     <CardActions sx={{ px: 2, pb: 2 }}>
-                      {item.status === 'generated' ? (
+                      {generatedContent?.has(item.type) ? (
                         <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
-                          <Button size="small" variant="outlined" fullWidth>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            fullWidth
+                            onClick={() => onViewContent?.(item.type)}
+                          >
                             View
                           </Button>
-                          <IconButton size="small">
+                          <IconButton
+                            size="small"
+                            onClick={() => onDownload?.(item.type)}
+                          >
                             <Download fontSize="small" />
                           </IconButton>
-                          <IconButton size="small">
+                          <IconButton
+                            size="small"
+                            onClick={() => onShare?.(item.type)}
+                          >
                             <Share fontSize="small" />
                           </IconButton>
                         </Box>
@@ -214,6 +232,7 @@ const StudioPanel: React.FC<StudioPanelProps> = ({ open, onToggle, isMobile }) =
                           fullWidth
                           startIcon={<AutoAwesome />}
                           sx={{ textTransform: 'none' }}
+                          onClick={() => onGenerateContent?.(item.type)}
                         >
                           Generate
                         </Button>

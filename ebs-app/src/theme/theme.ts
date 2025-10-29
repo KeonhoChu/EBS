@@ -5,10 +5,16 @@ const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#1a73e8', // Google Blue
-      light: '#4285f4',
-      dark: '#1557b0',
-      50: '#e8f0fe',
+      // main: '#1a73e8', // Google Blue
+      // light: '#4285f4',
+      // dark: '#1557b0',
+      // 50: '#e8f0fe',
+      // 100: '#d2e3fc',
+      // 200: '#aecbfa',
+      main: '#A6E3E9', // Google Blue
+      light: '#CBF1F5',
+      dark: '#71C9CE',
+      50: '#E3FDFD',
       100: '#d2e3fc',
       200: '#aecbfa',
     },

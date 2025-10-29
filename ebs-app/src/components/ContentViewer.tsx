@@ -39,6 +39,8 @@ interface ContentViewerProps {
   contentType: 'faq' | 'study-guide' | 'briefing' | 'timeline' | 'toc';
   title: string;
   data: ContentItem[];
+  onDownload?: () => void;
+  onShare?: () => void;
 }
 
 const ContentViewer: React.FC<ContentViewerProps> = ({
@@ -47,6 +49,8 @@ const ContentViewer: React.FC<ContentViewerProps> = ({
   contentType,
   title,
   data,
+  onDownload,
+  onShare,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -302,10 +306,10 @@ const ContentViewer: React.FC<ContentViewerProps> = ({
           <IconButton size="small" onClick={handleCopy}>
             {copied ? <CheckCircle color="success" /> : <ContentCopy />}
           </IconButton>
-          <IconButton size="small">
+          <IconButton size="small" onClick={onDownload}>
             <Download />
           </IconButton>
-          <IconButton size="small">
+          <IconButton size="small" onClick={onShare}>
             <Share />
           </IconButton>
           <IconButton size="small" onClick={onClose}>
@@ -332,6 +336,7 @@ const ContentViewer: React.FC<ContentViewerProps> = ({
           variant="outlined"
           fullWidth
           startIcon={<Download />}
+          onClick={onDownload}
         >
           Export as PDF
         </Button>

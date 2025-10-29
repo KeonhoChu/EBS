@@ -21,18 +21,25 @@ import {
   Share,
   Mic,
   GraphicEq,
+  Close,
 } from '@mui/icons-material';
 
 interface AudioOverviewPlayerProps {
   title?: string;
   duration?: number;
   isGenerating?: boolean;
+  onDownload?: () => void;
+  onShare?: () => void;
+  onClose?: () => void;
 }
 
 const AudioOverviewPlayer: React.FC<AudioOverviewPlayerProps> = ({
   title = 'Audio Overview',
   duration = 1245, // seconds
   isGenerating = false,
+  onDownload,
+  onShare,
+  onClose,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -240,12 +247,17 @@ const AudioOverviewPlayer: React.FC<AudioOverviewPlayerProps> = ({
         </Box>
 
         {/* Actions */}
-        <IconButton size="small">
+        <IconButton size="small" onClick={onDownload}>
           <Download />
         </IconButton>
-        <IconButton size="small">
+        <IconButton size="small" onClick={onShare}>
           <Share />
         </IconButton>
+        {onClose && (
+          <IconButton size="small" onClick={onClose}>
+            <Close />
+          </IconButton>
+        )}
       </Box>
 
       {/* Interactive Mode */}

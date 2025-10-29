@@ -8,6 +8,7 @@ import {
   Chip,
   Link,
   Avatar,
+  CircularProgress,
 } from '@mui/material';
 import {
   Send,
@@ -16,6 +17,9 @@ import {
   ThumbUp,
   ThumbDown,
 } from '@mui/icons-material';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { answerQuestion } from '../services/llmClient';
 
 interface Message {
   id: string;
@@ -28,52 +32,100 @@ interface Message {
 interface ChatPanelProps {
   sourcesOpen: boolean;
   studioOpen: boolean;
+  onShowSnackbar?: (message: string, severity?: 'success' | 'info' | 'warning' | 'error') => void;
+  sources?: Array<{ name: string; type: string; enabled: boolean }>;
 }
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ sourcesOpen, studioOpen }) => {
+const ChatPanel: React.FC<ChatPanelProps> = ({ sourcesOpen, studioOpen, onShowSnackbar, sources: externalSources }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I\'m here to help you explore your sources. What would you like to know?',
+      content: '안녕하세요! 소스 문서를 분석하고 질문에 답변해드리는 AI 어시스턴트입니다. 무엇을 도와드릴까요?',
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 외부에서 전달받은 sources 사용 (없으면 기본값)
+  const defaultSources = [
+    { name: 'Research Document.pdf', type: 'pdf', enabled: true },
+    { name: 'Presentation Slides', type: 'slides', enabled: true },
+    { name: 'Tutorial Video', type: 'youtube', enabled: true },
+  ];
+  const sources = externalSources || defaultSources;
+
+  const handleCopyMessage = (content: string) => {
+    navigator.clipboard.writeText(content);
+    onShowSnackbar?.('메시지가 복사되었습니다', 'success');
+  };
+
+  const handleThumbUp = () => {
+    onShowSnackbar?.('피드백 감사합니다!', 'success');
+  };
+
+  const handleThumbDown = () => {
+    onShowSnackbar?.('피드백 감사합니다. 개선하겠습니다.', 'info');
+  };
 
   const suggestedQuestions = [
-    'What are the main themes in these documents?',
-    'Summarize the key findings',
-    'What are the important dates mentioned?',
+    '이 문서들의 주요 주제는 무엇인가요?',
+    '핵심 발견사항을 요약해주세요',
+    '중요한 날짜나 일정은 무엇인가요?',
   ];
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
 
-    const newMessage: Message = {
+    // enabled된 소스만 필터링
+    const enabledSources = sources.filter(s => s.enabled).map(s => ({ name: s.name, type: s.type }));
+
+    if (enabledSources.length === 0) {
+      onShowSnackbar?.('먼저 소스를 활성화해주세요', 'warning');
+      return;
+    }
+
+    const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: input,
       timestamp: new Date(),
     };
 
-    setMessages([...messages, newMessage]);
+    setMessages([...messages, userMessage]);
     setInput('');
+    setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // 실제 LLM 호출 (enabled된 소스만 사용)
+      const { answer, citations } = await answerQuestion(input, enabledSources);
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'This is a simulated response based on your sources. The information comes from your uploaded documents.',
-        citations: [
-          { source: 'Research Document.pdf', page: 12 },
-          { source: 'Presentation Slides', page: 5 },
-        ],
+        content: answer,
+        citations: citations,
         timestamp: new Date(),
       };
+
       setMessages(prev => [...prev, aiResponse]);
-    }, 1000);
+    } catch (error: any) {
+      console.error('LLM 오류:', error);
+
+      // 오류 메시지 표시
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `죄송합니다. 응답을 생성하는 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`,
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, errorMessage]);
+      onShowSnackbar?.('AI 응답 생성 중 오류가 발생했습니다', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -147,9 +199,95 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ sourcesOpen, studioOpen }) => {
                   borderRadius: 2,
                 }}
               >
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                  {message.content}
-                </Typography>
+                <Box
+                  sx={{
+                    '& p': {
+                      margin: '0.5em 0',
+                      lineHeight: 1.6,
+                    },
+                    '& p:first-of-type': {
+                      marginTop: 0,
+                    },
+                    '& p:last-child': {
+                      marginBottom: 0,
+                    },
+                    '& h1, & h2, & h3, & h4, & h5, & h6': {
+                      marginTop: '1em',
+                      marginBottom: '0.5em',
+                      fontWeight: 600,
+                    },
+                    '& ul, & ol': {
+                      marginLeft: '1.5em',
+                      marginTop: '0.5em',
+                      marginBottom: '0.5em',
+                    },
+                    '& li': {
+                      marginBottom: '0.25em',
+                    },
+                    '& code': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                      padding: '0.2em 0.4em',
+                      borderRadius: '3px',
+                      fontFamily: 'monospace',
+                      fontSize: '0.9em',
+                    },
+                    '& pre': {
+                      backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                      padding: '1em',
+                      borderRadius: '6px',
+                      overflow: 'auto',
+                      marginTop: '0.5em',
+                      marginBottom: '0.5em',
+                    },
+                    '& pre code': {
+                      backgroundColor: 'transparent',
+                      padding: 0,
+                    },
+                    '& blockquote': {
+                      borderLeft: '4px solid',
+                      borderColor: 'primary.main',
+                      paddingLeft: '1em',
+                      marginLeft: 0,
+                      marginTop: '0.5em',
+                      marginBottom: '0.5em',
+                      color: 'text.secondary',
+                    },
+                    '& table': {
+                      borderCollapse: 'collapse',
+                      width: '100%',
+                      marginTop: '0.5em',
+                      marginBottom: '0.5em',
+                    },
+                    '& th, & td': {
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      padding: '0.5em',
+                      textAlign: 'left',
+                    },
+                    '& th': {
+                      backgroundColor: 'action.hover',
+                      fontWeight: 600,
+                    },
+                    '& a': {
+                      color: 'primary.main',
+                      textDecoration: 'none',
+                      '&:hover': {
+                        textDecoration: 'underline',
+                      },
+                    },
+                    '& hr': {
+                      border: 'none',
+                      borderTop: '1px solid',
+                      borderColor: 'divider',
+                      marginTop: '1em',
+                      marginBottom: '1em',
+                    },
+                  }}
+                >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {message.content}
+                  </ReactMarkdown>
+                </Box>
 
                 {/* Citations */}
                 {message.citations && message.citations.length > 0 && (
@@ -189,13 +327,22 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ sourcesOpen, studioOpen }) => {
               {/* Message Actions */}
               {message.role === 'assistant' && (
                 <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
-                  <IconButton size="small">
+                  <IconButton
+                    size="small"
+                    onClick={() => handleCopyMessage(message.content)}
+                  >
                     <ContentCopy fontSize="small" />
                   </IconButton>
-                  <IconButton size="small">
+                  <IconButton
+                    size="small"
+                    onClick={handleThumbUp}
+                  >
                     <ThumbUp fontSize="small" />
                   </IconButton>
-                  <IconButton size="small">
+                  <IconButton
+                    size="small"
+                    onClick={handleThumbDown}
+                  >
                     <ThumbDown fontSize="small" />
                   </IconButton>
                 </Box>
@@ -267,7 +414,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ sourcesOpen, studioOpen }) => {
           <IconButton
             color="primary"
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || isLoading}
             sx={{
               bgcolor: 'primary.main',
               color: 'white',
@@ -279,7 +426,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ sourcesOpen, studioOpen }) => {
               },
             }}
           >
-            <Send />
+            {isLoading ? <CircularProgress size={24} color="inherit" /> : <Send />}
           </IconButton>
         </Box>
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>

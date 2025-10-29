@@ -25,6 +25,7 @@ import {
   YouTube,
   Link as LinkIcon,
   AudioFile,
+  Delete,
 } from '@mui/icons-material';
 
 interface Source {
@@ -39,19 +40,28 @@ interface SourcesPanelProps {
   open: boolean;
   onToggle: () => void;
   isMobile: boolean;
+  onAddSource?: () => void;
+  sources?: Source[];
+  onSourcesChange?: (sources: Source[]) => void;
+  onDeleteSource?: (id: string) => void;
 }
 
-const SourcesPanel: React.FC<SourcesPanelProps> = ({ open, onToggle, isMobile }) => {
-  const [sources, setSources] = useState<Source[]>([
+const SourcesPanel: React.FC<SourcesPanelProps> = ({ open, onToggle, isMobile, onAddSource, sources: externalSources, onSourcesChange, onDeleteSource }) => {
+  const [internalSources, setInternalSources] = useState<Source[]>([
     { id: '1', name: 'Research Document.pdf', type: 'pdf', enabled: true, wordCount: 12500 },
     { id: '2', name: 'Presentation Slides', type: 'slides', enabled: true, wordCount: 3200 },
     { id: '3', name: 'Tutorial Video', type: 'youtube', enabled: false, wordCount: 8900 },
   ]);
 
+  // 외부에서 sources를 전달받으면 사용, 아니면 내부 state 사용
+  const sources = externalSources || internalSources;
+  const setSources = onSourcesChange || setInternalSources;
+
   const handleToggleSource = (id: string) => {
-    setSources(sources.map(s =>
+    const newSources = sources.map(s =>
       s.id === id ? { ...s, enabled: !s.enabled } : s
-    ));
+    );
+    setSources(newSources);
   };
 
   const getSourceIcon = (type: Source['type']) => {
@@ -109,6 +119,7 @@ const SourcesPanel: React.FC<SourcesPanelProps> = ({ open, onToggle, isMobile })
             variant="contained"
             startIcon={<Add />}
             fullWidth
+            onClick={onAddSource}
             sx={{
               textTransform: 'none',
               bgcolor: 'primary.main',
@@ -123,6 +134,7 @@ const SourcesPanel: React.FC<SourcesPanelProps> = ({ open, onToggle, isMobile })
           <Tooltip title="Add Source" placement="right">
             <IconButton
               color="primary"
+              onClick={onAddSource}
               sx={{
                 width: '100%',
                 borderRadius: 1,
@@ -158,12 +170,31 @@ const SourcesPanel: React.FC<SourcesPanelProps> = ({ open, onToggle, isMobile })
                 disablePadding
                 secondaryAction={
                   open && (
-                    <Checkbox
-                      edge="end"
-                      checked={source.enabled}
-                      onChange={() => handleToggleSource(source.id)}
-                      size="small"
-                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.1 }}>
+                      <Tooltip title="Delete source">
+                        <IconButton
+                          edge="end"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteSource?.(source.id);
+                          }}
+                          sx={{
+                            '&:hover': {
+                              color: 'error.main',
+                            },
+                          }}
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Checkbox
+                        edge="end"
+                        checked={source.enabled}
+                        onChange={() => handleToggleSource(source.id)}
+                        size="small"
+                      />
+                    </Box>
                   )
                 }
               >
@@ -178,9 +209,17 @@ const SourcesPanel: React.FC<SourcesPanelProps> = ({ open, onToggle, isMobile })
                       primaryTypographyProps={{
                         fontSize: '0.875rem',
                         fontWeight: 500,
+                        noWrap: true,
                       }}
                       secondaryTypographyProps={{
                         fontSize: '0.75rem',
+                      }}
+                      sx={{
+                        pr: 9, // 삭제 버튼과 체크박스를 위한 충분한 여백
+                        '& .MuiListItemText-primary': {
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        },
                       }}
                     />
                   )}
